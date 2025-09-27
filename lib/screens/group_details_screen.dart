@@ -1,4 +1,4 @@
-// group_details_screen.dart
+// lib/screens/group_details_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -25,86 +25,130 @@ class GroupDetailsScreen extends StatelessWidget {
     return balance;
   }
 
-
-
-
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('groups');
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Group Details")),
+      appBar: AppBar(
+        title: const Text("Group Details"),
+        centerTitle: true,
+      ),
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
         builder: (context, Box groups, _) {
           final group = groups.get(groupId);
           if (group == null) return const Center(child: Text("Group not found"));
-          
+
           final members = (group['members'] as List<dynamic>?)?.cast<String>() ?? [];
           final expenses = (group['expenses'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
           final balances = calculateBalances(expenses, members);
 
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Group: ${group['name']}",
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Text("Code: ${group['groupId']}"),
-                const SizedBox(height: 20),
-                QrImageView(data: group['groupId'] ?? '', size: 180),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddExpenseScreen(groupId: groupId),
-                      ),
-                    );
-                  },
-                  child: const Text("Add Expense"),
-                ),
-                const SizedBox(height: 20),
-                const Text("Expenses", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: expenses.isEmpty
-                      ? const Center(child: Text("No expenses yet"))
-                      : ListView.builder(
-                          itemCount: expenses.length,
-                          itemBuilder: (_, i) {
-                            final e = expenses[i] ?? {};
-                            final desc = e['desc']?.toString() ?? '';
-                            final payer = e['payer']?.toString() ?? '';
-                            final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
-
-                            return ListTile(
-                              title: Text(desc.isNotEmpty ? desc : 'No description'),
-                              subtitle: Text(payer.isNotEmpty ? "Paid by: $payer" : "No payer"),
-                              trailing: Text("₹ ${amount.toStringAsFixed(2)}"),
-                            );
-                          },
+                // Group Info
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Text(
+                          group['name'] ?? "Unnamed Group",
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         ),
+                        const SizedBox(height: 8),
+                        Text("Code: ${group['groupId']}", style: const TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 16),
+                        QrImageView(data: group['groupId'] ?? '', size: 160),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 10),
-                const Text("Balances", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 20),
+
+                // Add Expense Button
+                Center(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AddExpenseScreen(groupId: groupId),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text("Add Expense"),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Expenses Timeline
+                const Text("Expenses", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                expenses.isEmpty
+                    ? const Center(child: Text("No expenses yet"))
+                    : Column(
+                        children: expenses.map((e) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.grey.shade100,
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.blue.shade100,
+                                child: const Icon(Icons.attach_money, color: Colors.blue),
+                              ),
+                              title: Text(e['desc'] ?? "No description"),
+                              subtitle: Text("Paid by: ${e['payer']}"),
+                              trailing: Text(
+                                "₹ ${e['amount'] ?? 0}",
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                const SizedBox(height: 24),
+
+                // Balances Section
+                const Text("Balances", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: balances.entries.map((e) {
-                    final name = e.key;
                     final amt = e.value;
+                    Color chipColor;
+                    String text;
+
                     if (amt > 0) {
-                      return Text("$name should receive ₹${amt.toStringAsFixed(2)}");
+                      chipColor = Colors.green.shade100;
+                      text = "${e.key} should receive ₹${amt.toStringAsFixed(2)}";
                     } else if (amt < 0) {
-                      return Text("$name owes ₹${(-amt).toStringAsFixed(2)}");
+                      chipColor = Colors.red.shade100;
+                      text = "${e.key} owes ₹${(-amt).toStringAsFixed(2)}";
                     } else {
-                      return Text("$name is settled");
+                      chipColor = Colors.grey.shade200;
+                      text = "${e.key} is settled";
                     }
+
+                    return Chip(
+                      backgroundColor: chipColor,
+                      label: Text(text),
+                    );
                   }).toList(),
                 ),
               ],

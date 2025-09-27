@@ -1,6 +1,6 @@
-// join_group_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'group_details_screen.dart';
 
 class JoinGroupScreen extends StatefulWidget {
@@ -11,59 +11,82 @@ class JoinGroupScreen extends StatefulWidget {
 }
 
 class _JoinGroupScreenState extends State<JoinGroupScreen> {
-  final _codeController = TextEditingController();
-  final _nameController = TextEditingController();
+  bool _isScanning = true;
+  String _manualCode = '';
+  MobileScannerController controller = MobileScannerController();
 
-  void _joinGroup() {
+  void _onDetect(BarcodeCapture capture) async {
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isEmpty) return;
+
+    final code = barcodes.first.rawValue;
+    if (code != null) {
+      _joinGroup(code);
+    }
+  }
+
+  void _joinGroup(String code) {
     final box = Hive.box('groups');
-    final group = box.get(_codeController.text);
+    if (box.containsKey(code)) {
+      // Add current user as member if not already
+      final group = Map<String, dynamic>.from(box.get(code));
+      List<String> members = List<String>.from(group['members'] ?? []);
+      const currentUser = "Me"; // Replace with actual username logic
+      if (!members.contains(currentUser)) members.add(currentUser);
+      group['members'] = members;
+      box.put(code, group);
 
-    if (group == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Group not found")),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => GroupDetailsScreen(groupId: code)),
       );
-      return;
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Invalid group code")));
     }
-
-    // Add member if not already present
-    final name = _nameController.text;
-    if (!group['members'].contains(name)) {
-      group['members'].add(name);
-      box.put(_codeController.text, group);
-    }
-
-    // Navigate to group details
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => GroupDetailsScreen(groupId: _codeController.text),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Join Group")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: "Your Name"),
-            ),
-            TextField(
-              controller: _codeController,
-              decoration: InputDecoration(labelText: "Group Code"),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _joinGroup,
-              child: Text("Join Group"),
-            ),
-          ],
-        ),
+      appBar: AppBar(title: const Text("Join Group")),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isScanning
+                ? MobileScanner(
+                    controller: controller,
+                    onDetect: _onDetect,
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'Enter Group Code',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (val) => _manualCode = val,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => _joinGroup(_manualCode),
+                          child: const Text("Join Group"),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _isScanning = !_isScanning;
+              });
+            },
+            child: Text(_isScanning ? "Enter code manually" : "Scan QR code"),
+          ),
+        ],
       ),
     );
   }
