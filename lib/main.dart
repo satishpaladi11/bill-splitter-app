@@ -5,28 +5,55 @@ import 'screens/history_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/add_expense_screen.dart';
+import 'screens/group_details_screen.dart'; // import for GroupDetailsScreen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox('groups');
+  await Hive.openBox('appState'); // box to store last visited screen
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
+  Future<Widget> _getInitialScreen() async {
+    final appBox = Hive.box('appState');
+    final lastScreen = appBox.get('lastScreen', defaultValue: 'home');
+    if (lastScreen == 'group') {
+      final lastGroupId = appBox.get('lastGroupId') as String?;
+      if (lastGroupId != null) {
+        return GroupDetailsScreen(groupId: lastGroupId);
+      }
+    }
+    return const HomeScreen();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: MainScreen(),
+    return FutureBuilder<Widget>(
+      future: _getInitialScreen(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: MainScreen(initialScreen: snapshot.data!),
+          );
+        }
+        // Splash/loading while deciding initial screen
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: Scaffold(body: Center(child: CircularProgressIndicator())),
+        );
+      },
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  final Widget initialScreen;
+  const MainScreen({Key? key, required this.initialScreen}) : super(key: key);
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -34,14 +61,32 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  late List<Widget> _screens;
 
-  // Using nullable/placeholder for screens that require a groupId
-  late final List<Widget> _screens = [
-    HomeScreen(), // Groups list
-    const PlaceholderWidget(label: "Select a group first"), // Activity placeholder
-    const ReportsScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const HomeScreen(),
+      const PlaceholderWidget(label: "Select a group first"), // Activity placeholder
+      const ReportsScreen(),
+      const ProfileScreen(),
+    ];
+
+    // Determine initial selected index based on initialScreen
+    if (widget.initialScreen is HomeScreen) {
+      _selectedIndex = 0;
+    } else if (widget.initialScreen is GroupDetailsScreen) {
+      // For group details, we can show home as selected and navigate immediately
+      _selectedIndex = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => widget.initialScreen),
+        );
+      });
+    }
+  }
 
   void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
