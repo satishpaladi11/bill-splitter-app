@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
-import 'screens/history_screen.dart';
-import 'screens/reports_screen.dart';
+import 'screens/group_details_screen.dart';
+import 'screens/profile_setup_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/add_expense_screen.dart';
-import 'screens/group_details_screen.dart'; // import for GroupDetailsScreen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox('groups');
-  await Hive.openBox('appState'); // box to store last visited screen
-  runApp(const MyApp());
+  await Hive.openBox('appState');
+  await Hive.openBox('profile'); // box for storing user profile
+
+  final profileBox = Hive.box('profile');
+  final bool hasProfile = profileBox.containsKey('name');
+
+  runApp(MyApp(showProfileSetup: !hasProfile));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final bool showProfileSetup;
+  const MyApp({super.key, required this.showProfileSetup});
 
   Future<Widget> _getInitialScreen() async {
     final appBox = Hive.box('appState');
     final lastScreen = appBox.get('lastScreen', defaultValue: 'home');
+
     if (lastScreen == 'group') {
       final lastGroupId = appBox.get('lastGroupId') as String?;
       if (lastGroupId != null) {
@@ -38,13 +43,19 @@ class MyApp extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: MainScreen(initialScreen: snapshot.data!),
+            title: 'Simplify Split',
+            theme: ThemeData(primarySwatch: Colors.indigo),
+            home: showProfileSetup
+                ? ProfileSetupScreen()
+                : MainScreen(initialScreen: snapshot.data!),
           );
         }
-        // Splash/loading while deciding initial screen
+        // Loading/splash while determining initial screen
         return const MaterialApp(
           debugShowCheckedModeBanner: false,
-          home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          home: Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
         );
       },
     );
@@ -53,7 +64,7 @@ class MyApp extends StatelessWidget {
 
 class MainScreen extends StatefulWidget {
   final Widget initialScreen;
-  const MainScreen({Key? key, required this.initialScreen}) : super(key: key);
+  const MainScreen({super.key, required this.initialScreen});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -67,17 +78,13 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const HomeScreen(),
-      const PlaceholderWidget(label: "Select a group first"), // Activity placeholder
-      const ReportsScreen(),
-      const ProfileScreen(),
+      const HomeScreen(), // Groups
+      const ProfileScreen(), // Profile
+      const PlaceholderWidget(label: "Feedback"), // Feedback
     ];
 
-    // Determine initial selected index based on initialScreen
-    if (widget.initialScreen is HomeScreen) {
-      _selectedIndex = 0;
-    } else if (widget.initialScreen is GroupDetailsScreen) {
-      // For group details, we can show home as selected and navigate immediately
+    // Navigate to last visited screen if it's a GroupDetailsScreen
+    if (widget.initialScreen is GroupDetailsScreen) {
       _selectedIndex = 0;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.push(
@@ -85,42 +92,31 @@ class _MainScreenState extends State<MainScreen> {
           MaterialPageRoute(builder: (_) => widget.initialScreen),
         );
       });
+    } else {
+      _selectedIndex = 0;
     }
   }
 
-  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
+  // Navigation logic is handled by updating _selectedIndex, which switches the displayed screen.
 
-  void _openAddExpense() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Select a group first to add expense")),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddExpense,
-        backgroundColor: Colors.indigo,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.group), label: "Groups"),
-            BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Activity"),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Reports"),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          ],
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Groups"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: "Feedback"),
+        ],
       ),
     );
   }
@@ -128,7 +124,7 @@ class _MainScreenState extends State<MainScreen> {
 
 class PlaceholderWidget extends StatelessWidget {
   final String label;
-  const PlaceholderWidget({Key? key, required this.label}) : super(key: key);
+  const PlaceholderWidget({super.key, required this.label});
 
   @override
   Widget build(BuildContext context) => Center(child: Text(label));

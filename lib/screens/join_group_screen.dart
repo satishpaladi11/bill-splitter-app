@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'group_details_screen.dart';
+// import 'group_details_screen.dart';
+import '../screens/group_details_screen.dart' show GroupDetailsScreen;
 
 class JoinGroupScreen extends StatefulWidget {
-  const JoinGroupScreen({Key? key}) : super(key: key);
+  const JoinGroupScreen({super.key});
 
   @override
   _JoinGroupScreenState createState() => _JoinGroupScreenState();
@@ -28,14 +29,31 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
   void _joinGroup(String code) {
     final box = Hive.box('groups');
     if (box.containsKey(code)) {
-      // Add current user as member if not already
+      // Fetch group
       final group = Map<String, dynamic>.from(box.get(code));
-      List<String> members = List<String>.from(group['members'] ?? []);
-      const currentUser = "Me"; // Replace with actual username logic
-      if (!members.contains(currentUser)) members.add(currentUser);
-      group['members'] = members;
-      box.put(code, group);
 
+      // Members as list of objects
+      List<dynamic> members = List<dynamic>.from(group['members'] ?? []);
+
+      // Get current user profile
+      final profileBox = Hive.box('profile');
+      final userName = profileBox.get('name', defaultValue: "You");
+      final avatarIndex = profileBox.get('avatarIndex', defaultValue: 0);
+      final currentUser = {
+        "name": userName,
+        "avatarIndex": avatarIndex,
+        "isDefaultUser": true,
+      };
+
+      // Add user if not already in group
+      final alreadyMember = members.any((m) => m['name'] == userName);
+      if (!alreadyMember) {
+        members.add(currentUser);
+        group['members'] = members;
+        box.put(code, group);
+      }
+
+      // Navigate to group details
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => GroupDetailsScreen(groupId: code)),

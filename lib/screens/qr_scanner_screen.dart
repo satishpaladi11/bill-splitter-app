@@ -5,7 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 class QRScannerScreen extends StatelessWidget {
   final Function(String) onCodeScanned;
 
-  const QRScannerScreen({Key? key, required this.onCodeScanned}) : super(key: key);
+  const QRScannerScreen({super.key, required this.onCodeScanned});
 
   @override
   Widget build(BuildContext context) {
