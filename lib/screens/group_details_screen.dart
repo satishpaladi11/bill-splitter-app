@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'package:flutter/rendering.dart';
 
 import 'add_expense_screen.dart';
+import '../widgets/group_summary_card.dart';
 
 class GroupDetailsScreen extends StatelessWidget {
   final String groupId;
@@ -118,7 +122,92 @@ class GroupDetailsScreen extends StatelessWidget {
                 final groupName = (group?['name'] as String?) ?? "Group";
                 _showShareSheet(context, groupId, groupName);
               },
-            )
+            ),
+            IconButton(
+              tooltip: 'Share summary card',
+              icon: const Icon(Icons.card_giftcard),
+              onPressed: () async {
+                final raw = box.get(groupId);
+                if (raw == null) return;
+                final group = Map<String, dynamic>.from(raw as Map);
+                final members = (group['members'] as List<dynamic>?)?.map((m) => Map<String, dynamic>.from(m)).toList() ?? <Map<String, dynamic>>[];
+                final expensesRaw = (group['expenses'] as List<dynamic>?) ?? <dynamic>[];
+                final expenses = expensesRaw.map<Map<String, dynamic>>((e) {
+                  if (e is Map) return Map<String, dynamic>.from(e);
+                  return <String, dynamic>{
+                    'desc': e.toString(),
+                    'amount': 0,
+                    'payer': '',
+                    'timestamp': null,
+                  };
+                }).toList();
+                final balances = calculateBalances(
+                  expenses,
+                  members.map((m) => m['name'] as String).toList(),
+                );
+
+                final cardKey = GlobalKey();
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  builder: (ctx) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                        left: 12, right: 12, top: 24,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RepaintBoundary(
+                            key: cardKey,
+                            child: GroupSummaryCard(
+                              groupName: group['name'] ?? '',
+                              members: members,
+                              expenses: expenses,
+                              balances: balances,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.share),
+                            label: const Text('Share as Image'),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () async {
+                              try {
+                                RenderRepaintBoundary boundary = cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+                                var image = await boundary.toImage(pixelRatio: 3.0);
+                                ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                                if (byteData != null) {
+                                  final pngBytes = byteData.buffer.asUint8List();
+                                  final tempDir = await Directory.systemTemp.createTemp();
+                                  final file = await File('${tempDir.path}/group_summary.png').writeAsBytes(pngBytes);
+                                  await Share.shareXFiles([XFile(file.path)], text: 'Group summary from Simplify Split');
+                                } else {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(content: Text('Failed to capture image.')),
+                                  );
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(content: Text('Failed to share image: $e')),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
