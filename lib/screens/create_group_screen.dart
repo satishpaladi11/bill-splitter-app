@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
+import 'package:share_plus/share_plus.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -14,11 +15,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _memberController = TextEditingController();
   final List<Map<String, dynamic>> members = []; // store name + avatar
+  late final String _pendingGroupId;
 
   @override
   void initState() {
     super.initState();
     _loadDefaultUser(); // Ensure default user is loaded
+    // Generate a pending group id so we can share invites before the group is created
+    _pendingGroupId = const Uuid().v4();
   }
 
   // ...existing code...
@@ -35,13 +39,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }
 
   // ...existing code...
-  void _addMember(String name) {
+  // Internal helper that actually adds a member object to the members list
+  void _addMemberInternal(String name, {bool invited = false}) {
     if (name.trim().isEmpty) return;
     final List<String> avatars = [
       "😀","😎","🧸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
       "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
     ];
-    // Pick a random avatar index for new member
+    // Pick the first unused avatar index for new member
     final usedIndices = members.map((m) => m['avatarIndex'] as int?).whereType<int>().toSet();
     int avatarIndex = 0;
     for (int i = 0; i < avatars.length; i++) {
@@ -55,9 +60,47 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         "name": name.trim(),
         "avatarIndex": avatarIndex,
         "isDefaultUser": false,
+        "invited": invited,
       });
       _memberController.clear(); // Clear the member input after adding
     });
+  }
+
+  // Public add member flow: ask whether to invite or add locally
+  void _addMember(String name) {
+    if (name.trim().isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Add member'),
+          content: Text('Invite "$name" to join this group or add their name locally?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Add locally without inviting
+                Navigator.pop(ctx);
+                _addMemberInternal(name, invited: false);
+              },
+              child: const Text('Add locally'),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.share),
+              label: const Text('Invite'),
+              onPressed: () {
+                // Share invite with pending group id
+                final groupName = _groupNameController.text.trim().isEmpty ? 'Group' : _groupNameController.text.trim();
+                final inviteText = 'Join my group "$groupName" on Simplify Split.\nGroup Code: $_pendingGroupId';
+                Share.share(inviteText);
+                Navigator.pop(ctx);
+                // Mark as invited locally so user can see pending invite
+                _addMemberInternal(name, invited: true);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _createGroup() async {
@@ -76,7 +119,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     }
 
     final box = Hive.box('groups');
-    final groupId = const Uuid().v4();
+    final groupId = _pendingGroupId; // use pending id so invites work before create
 
     await box.put(groupId, {
       'groupId': groupId,
@@ -147,7 +190,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
                           ];
                           final avatarIndex = m['avatarIndex'] ?? 0;
+                          final invited = m['invited'] == true;
                           return Chip(
+                            backgroundColor: invited ? Colors.indigo.shade50 : null,
                             avatar: CircleAvatar(
                               radius: 18,
                               child: FittedBox(
@@ -159,12 +204,28 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 ),
                               ),
                             ),
-                            label: Text(m['name']),
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(m['name']),
+                                if (invited) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('invited', style: TextStyle(fontSize: 11, color: Colors.indigo)),
+                                  ),
+                                ]
+                              ],
+                            ),
                             onDeleted: m['isDefaultUser']
                                 ? null // can't delete logged-in user
                                 : () {
-                                  setState(() => members.remove(m));
-                                },
+                                    setState(() => members.remove(m));
+                                  },
                           );
                         },
                       )

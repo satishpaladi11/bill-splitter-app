@@ -4,6 +4,7 @@ import 'screens/home_screen.dart';
 import 'screens/group_details_screen.dart';
 import 'screens/profile_setup_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/feedback_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,7 +81,7 @@ class _MainScreenState extends State<MainScreen> {
     _screens = [
       const HomeScreen(), // Groups
       const ProfileScreen(), // Profile
-      const PlaceholderWidget(label: "Feedback"), // Feedback
+      const FeedbackScreen(), // Feedback
     ];
 
     // Navigate to last visited screen if it's a GroupDetailsScreen

@@ -25,9 +25,9 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('groups');
-    final appStateBox = Hive.box('appState'); // Stores last visited info
+    final appStateBox = Hive.box('appState'); 
 
-    // Record that HomeScreen is last visited
+    // Mark last visited screen
     appStateBox.put('lastScreen', 'home');
 
     return Scaffold(
@@ -53,9 +53,14 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.group_off, size: 80, color: Colors.grey),
                       const SizedBox(height: 16),
-                      Text("No groups yet!", style: TextStyle(color: Colors.grey, fontSize: 20, fontWeight: FontWeight.w600)),
+                      Text("No groups yet!",
+                          style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      Text("Create or join a group to get started.", style: TextStyle(color: Colors.grey)),
+                      Text("Create or join a group to get started.",
+                          style: TextStyle(color: Colors.grey)),
                     ],
                   ),
                 );
@@ -68,6 +73,54 @@ class HomeScreen extends StatelessWidget {
                   final key = groupKeys[idx];
                   final group = groups.get(key) as Map? ?? {};
                   final color = _generateColor(key.toString());
+
+                  // members is stored as a List (of Map objects). Keep that for display.
+                  final members = group['members'] as List? ?? [];
+
+                  // In the data model, 'expenses' is a List of expense maps (not a Map).
+                  // Earlier code incorrectly assumed it was a Map which causes a cast error
+                  // when Hive returns a JSArray/List. Compute balances from the expense list.
+                  final expensesRaw = group['expenses'];
+                  final expensesList = (expensesRaw is List<dynamic>) ? expensesRaw : <dynamic>[];
+
+                  // Build member name list (expense records store payer as a name string)
+                  final memberNames = members.map((m) {
+                    if (m is Map) return (m['name'] as String?) ?? '';
+                    return m?.toString() ?? '';
+                  }).toList();
+
+                  // Calculate balances per member from expenses
+                  final Map<String, double> balances = {for (var n in memberNames) n: 0.0};
+                  for (final e in expensesList) {
+                    if (e is Map) {
+                      final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
+                      final payer = (e['payer'] as String?) ?? '';
+                      final perPerson = memberNames.isNotEmpty ? amount / memberNames.length : 0.0;
+                      for (final m in memberNames) {
+                        if (memberNames.contains(payer)) {
+                          balances[m] = (balances[m] ?? 0.0) + ((m == payer) ? amount - perPerson : -perPerson);
+                        }
+                      }
+                    }
+                  }
+
+                  // Total balance (sum of balances) will normally be ~0.0 because
+                  // everyone's net balances cancel out. Instead, show total spent
+                  // in the group to provide a meaningful value on the overview.
+                  double totalExpenses = 0.0;
+                  if (expensesRaw is Map) {
+                    // Some older data shapes may have stored a map (e.g. balances). Sum numeric values.
+                    for (final v in expensesRaw.values) {
+                      if (v is num) totalExpenses += v.toDouble();
+                    }
+                  } else {
+                    for (final e in expensesList) {
+                      if (e is Map) {
+                        totalExpenses += (e['amount'] as num?)?.toDouble() ?? 0.0;
+                      }
+                    }
+                  }
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -99,13 +152,42 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    "${(group['members'] as List?)?.length ?? 0} members",
+                                    "${members.length} members",
                                     style: const TextStyle(
                                         color: Colors.white70, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
+                              ),
+                            ),
+
+                            // Right column: total spent (neatly aligned) placed before the arrow
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    'Total',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '₹${totalExpenses.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+
                             const Icon(Icons.arrow_forward_ios,
                                 color: Colors.white70, size: 18),
                           ],
@@ -115,10 +197,11 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               );
-            }
+            },
           ),
         ),
       ),
+
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
