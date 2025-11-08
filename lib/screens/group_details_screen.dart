@@ -286,7 +286,8 @@ class GroupDetailsScreen extends StatelessWidget {
                                     spacing: 8,
                                     runSpacing: 6,
                                     alignment: WrapAlignment.center,
-                                    children: members.map((m) {
+                                    children: [
+                                      ...members.map((m) {
                                       final name = m['name'] as String? ?? '';
                                       final amt = balances[name] ?? 0.0;
                                       final chipColor = amt > 0
@@ -294,11 +295,11 @@ class GroupDetailsScreen extends StatelessWidget {
                                           : amt < 0
                                               ? Colors.red.shade100
                                               : Colors.grey.shade200;
-                                      final text = amt > 0
-                                          ? "$name +₹${amt.toStringAsFixed(2)}"
-                                          : amt < 0
-                                              ? "$name -₹${amt.abs().toStringAsFixed(2)}"
-                                              : "$name ✓";
+                    final text = amt > 0
+                      ? "$name +₹${amt.toStringAsFixed(2)}"
+                      : amt < 0
+                        ? "$name -₹${amt.abs().toStringAsFixed(2)}"
+                        : name;
                                       final List<String> avatars = [
                                         "😀","😎","🧸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
                                         "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
@@ -319,7 +320,72 @@ class GroupDetailsScreen extends StatelessWidget {
                                         ),
                                         label: Text(text),
                                       );
-                                    }).toList(),
+                                      }).toList(),
+
+                                      // Add member chip
+                                      ActionChip(
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: const [
+                                            Icon(Icons.add, size: 18),
+                                            SizedBox(width: 6),
+                                            Text('Add'),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.blue.shade50,
+                                        onPressed: () {
+                                          final TextEditingController _newMemberController = TextEditingController();
+                                          showDialog<void>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text('Add member'),
+                                              content: TextField(
+                                                controller: _newMemberController,
+                                                decoration: const InputDecoration(labelText: 'Member name'),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    final name = _newMemberController.text.trim();
+                                                    if (name.isEmpty) return;
+                                                    final box = Hive.box('groups');
+                                                    final raw = box.get(groupId);
+                                                    if (raw == null) return;
+                                                    final g = Map<String, dynamic>.from(raw as Map);
+                                                    final updatedMembers = (g['members'] as List<dynamic>?)?.map((m) => m is Map ? Map<String,dynamic>.from(m) : {'name': m.toString()}).toList() ?? <Map<String,dynamic>>[];
+                                                    updatedMembers.add({'name': name, 'avatarIndex': 0, 'isDefaultUser': false, 'invited': false});
+                                                    box.put(groupId, {...g, 'members': updatedMembers});
+                                                    Navigator.pop(ctx);
+                                                  },
+                                                  child: const Text('Add locally'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    final name = _newMemberController.text.trim();
+                                                    if (name.isEmpty) return;
+                                                    final box = Hive.box('groups');
+                                                    final raw = box.get(groupId);
+                                                    if (raw == null) return;
+                                                    final g = Map<String, dynamic>.from(raw as Map);
+                                                    final updatedMembers = (g['members'] as List<dynamic>?)?.map((m) => m is Map ? Map<String,dynamic>.from(m) : {'name': m.toString()}).toList() ?? <Map<String,dynamic>>[];
+                                                    updatedMembers.add({'name': name, 'avatarIndex': 0, 'isDefaultUser': false, 'invited': true});
+                                                    box.put(groupId, {...g, 'members': updatedMembers});
+                                                    // Share invite
+                                                    Share.share("Join my group '${g['name'] ?? ''}' on Simplify Split. Group Code: $groupId");
+                                                    Navigator.pop(ctx);
+                                                  },
+                                                  child: const Text('Invite & Add'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -329,69 +395,129 @@ class GroupDetailsScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       const Text("Expenses", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      if (expenses.isEmpty)
-                        Center(
-                          child: Column(
-                            children: const [
-                              SizedBox(height: 24.0),
-                              Icon(Icons.receipt_long, size: 64, color: Colors.grey),
-                              SizedBox(height: 8.0),
-                              Text("No expenses yet!", style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.w500)),
-                              SizedBox(height: 8.0),
-                              Text("Add your first expense to get started.", style: TextStyle(color: Colors.grey)),
-                              SizedBox(height: 12.0),
-                            ],
-                          ),
-                        )
-                      else
-                        Column(
-                          children: expenses.reversed.map((e) {
-                            final desc = e['desc'] ?? 'No description';
-                            final payer = e['payer'] ?? '';
-                            final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
-                            final ts = e['timestamp'] != null ? DateTime.tryParse(e['timestamp'].toString()) : null;
-                            final subtitle = payer.isNotEmpty ? "Paid by: $payer" : null;
-                            final subtitleWidget = subtitle != null ? Text(subtitle) : null;
-                            final dateText = ts != null ? " • ${ts.toLocal().toString().split(' ')[0]}" : "";
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 1.5,
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue.shade50,
-                                  child: const Text(
-                                    "₹",
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
+                      Expanded(
+                        child: expenses.isEmpty
+                            ? Center(
+                                child: Column(
+                                  children: const [
+                                    SizedBox(height: 24.0),
+                                    Icon(Icons.receipt_long, size: 64, color: Colors.grey),
+                                    SizedBox(height: 8.0),
+                                    Text("No expenses yet!", style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.w500)),
+                                    SizedBox(height: 8.0),
+                                    Text("Add your first expense to get started.", style: TextStyle(color: Colors.grey)),
+                                    SizedBox(height: 12.0),
+                                  ],
+                                ),
+                              )
+                            : ListView(
+                                padding: EdgeInsets.zero,
+                                children: expenses.reversed.map((e) {
+                                  final rawDesc = e['desc'] as String?;
+                                  final desc = (rawDesc != null && rawDesc.trim().isNotEmpty) ? rawDesc.trim() : null;
+                                  final payer = (e['payer'] as String?) ?? '';
+                                  final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
+                                  final ts = e['timestamp'] != null ? DateTime.tryParse(e['timestamp'].toString()) : null;
+
+                                  String? dateTimeText;
+                                  if (ts != null) {
+                                    final local = ts.toLocal();
+                                    final y = local.year.toString().padLeft(4, '0');
+                                    final mo = local.month.toString().padLeft(2, '0');
+                                    final d = local.day.toString().padLeft(2, '0');
+                                    final h = local.hour.toString().padLeft(2, '0');
+                                    final min = local.minute.toString().padLeft(2, '0');
+                                    dateTimeText = '$y-$mo-$d $h:$min';
+                                  }
+
+                                  // Leading avatar: use payer initial if available, otherwise 'E'
+                                  final leadText = (payer.isNotEmpty) ? payer[0].toUpperCase() : 'E';
+
+                                  // Title: show 'Paid to <payer>' when payer is present
+                                  final titleWidget = Text(payer.isNotEmpty ? 'Paid by $payer' : 'Expense');
+
+                                  // Subtitle: show date/time first, then description below (if any)
+                                  final List<Widget> subtitleChildren = [];
+                                  if (dateTimeText != null) {
+                                    subtitleChildren.add(Text(dateTimeText, style: const TextStyle(color: Colors.grey, fontSize: 12)));
+                                  }
+                                  if (desc != null) {
+                                    subtitleChildren.add(const SizedBox(height: 6));
+                                    subtitleChildren.add(Text(desc, style: TextStyle(color: Colors.grey[800])));
+                                  }
+
+                                  final subtitleWidget = subtitleChildren.isNotEmpty
+                                      ? Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: subtitleChildren,
+                                        )
+                                      : null;
+
+                                  // Amount style: match page typography and remain neutral
+                                  final amountStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ) ??
+                                      const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87);
+
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 1.5,
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Colors.blue.shade50,
+                                        child: Text(
+                                          leadText,
+                                          style: const TextStyle(
+                                            color: Colors.blue,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
+                                      title: titleWidget,
+                                      subtitle: subtitleWidget,
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '₹ ${amount.toStringAsFixed(2)}',
+                                            style: amountStyle,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit, size: 20),
+                                            tooltip: 'Edit expense',
+                                            onPressed: () {
+                                              // find original index in the expenses list
+                                              final raw = box.get(groupId);
+                                              if (raw == null) return;
+                                              final currentGroup = Map<String, dynamic>.from(raw as Map);
+                                              final List<dynamic> exRaw = (currentGroup['expenses'] as List<dynamic>?) ?? <dynamic>[];
+                                              final List<Map<String, dynamic>> exList = exRaw.map<Map<String, dynamic>>((it) => it is Map ? Map<String, dynamic>.from(it) : <String, dynamic>{'desc': it.toString(), 'amount': 0, 'payer': '', 'timestamp': null}).toList();
+                                              final originalIndex = exList.indexWhere((item) {
+                                                // try to match by timestamp first, then by content
+                                                final aTs = item['timestamp']?.toString();
+                                                final bTs = e['timestamp']?.toString();
+                                                if (aTs != null && bTs != null && aTs == bTs) return true;
+                                                if (item['amount'] == e['amount'] && (item['desc'] ?? '') == (e['desc'] ?? '') && (item['payer'] ?? '') == (e['payer'] ?? '')) return true;
+                                                return false;
+                                              });
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(builder: (_) => AddExpenseScreen(groupId: groupId, expense: e, expenseIndex: originalIndex >= 0 ? originalIndex : null)),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Expanded(child: Text(desc)),
-                                  ],
-                                ),
-                                subtitle: subtitleWidget != null
-                                    ? Row(children: [
-                                        Expanded(child: subtitleWidget),
-                                        Text(dateText)
-                                      ])
-                                    : (dateText.isNotEmpty ? Text(dateText) : null),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.attach_money, size: 18, color: Colors.green),
-                                    SizedBox(width: 4),
-                                    Text("₹ ${amount.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                                  );
+                                }).toList(),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                      ),
                       const SizedBox(height: 32),
                     ],
                   );

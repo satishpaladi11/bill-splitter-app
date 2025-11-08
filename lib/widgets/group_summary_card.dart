@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 // Painter for confetti/abstract background
 class ConfettiPainter extends CustomPainter {

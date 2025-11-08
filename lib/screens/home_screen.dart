@@ -169,7 +169,7 @@ class HomeScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   const Text(
-                                    'Total',
+                                    'Total spent',
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12,

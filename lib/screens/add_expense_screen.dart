@@ -1,10 +1,13 @@
 // lib/screens/add_expense_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   final String groupId;
-  const AddExpenseScreen({super.key, required this.groupId});
+  final Map<String, dynamic>? expense; // existing expense when editing
+  final int? expenseIndex;
+  const AddExpenseScreen({super.key, required this.groupId, this.expense, this.expenseIndex});
 
   @override
   _AddExpenseScreenState createState() => _AddExpenseScreenState();
@@ -14,6 +17,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   String? selectedPayer;
+
+  @override
+  void initState() {
+    super.initState();
+    // If editing an existing expense, prefill fields
+    if (widget.expense != null) {
+      final exp = widget.expense!;
+      _descController.text = (exp['desc'] as String?) ?? '';
+      final amt = exp['amount'];
+      _amountController.text = amt != null ? amt.toString() : '';
+      selectedPayer = (exp['payer'] as String?) ?? selectedPayer;
+    }
+  }
 
   void _addMemberDialog(List<String> members) {
     final TextEditingController newMemberController = TextEditingController();
@@ -57,12 +73,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final amountText = _amountController.text.trim();
     final amount = double.tryParse(amountText) ?? 0;
 
-    if (desc.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a description."), backgroundColor: Colors.red),
-      );
-      return;
-    }
+    // Description is optional now; allow empty description
     if (amountText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter an amount."), backgroundColor: Colors.red),
@@ -86,12 +97,39 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final group = box.get(widget.groupId);
 
     final expenses = List<Map<String, dynamic>>.from(group['expenses'] ?? []);
-    expenses.add({
+    // Ensure stable id for each expense so edits are deterministic
+    final uuid = const Uuid();
+    final existingId = widget.expense != null ? (widget.expense!['id'] as String?) : null;
+
+    final newEntry = {
+      'id': existingId ?? uuid.v4(),
       'desc': desc,
       'amount': amount,
       'payer': selectedPayer,
       'timestamp': DateTime.now().toIso8601String(),
-    });
+    };
+
+    int? indexToUpdate = widget.expenseIndex;
+    // If we don't have an index but we have an expense with an id, try to find its index
+    if (indexToUpdate == null && existingId != null) {
+      indexToUpdate = expenses.indexWhere((it) => (it['id']?.toString() ?? '') == existingId);
+    }
+    // Fallback: try to match by timestamp or content if still not found
+    if ((indexToUpdate == null || indexToUpdate < 0) && widget.expense != null) {
+      final candidateTs = widget.expense!['timestamp']?.toString();
+      indexToUpdate = expenses.indexWhere((it) {
+        final its = it['timestamp']?.toString();
+        if (its != null && candidateTs != null && its == candidateTs) return true;
+        if ((it['amount'] == widget.expense!['amount']) && ((it['desc'] ?? '') == (widget.expense!['desc'] ?? '')) && ((it['payer'] ?? '') == (widget.expense!['payer'] ?? ''))) return true;
+        return false;
+      });
+    }
+
+    if (indexToUpdate != null && indexToUpdate >= 0 && indexToUpdate < expenses.length) {
+      expenses[indexToUpdate] = newEntry;
+    } else {
+      expenses.add(newEntry);
+    }
 
     await box.put(widget.groupId, {
       ...group,
@@ -99,7 +137,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Expense added!"), backgroundColor: Colors.green),
+      SnackBar(content: Text(widget.expenseIndex != null ? "Expense updated!" : "Expense added!"), backgroundColor: Colors.green),
     );
 
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -115,7 +153,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add Expense"),
+        title: Text(widget.expense != null ? "Edit Expense" : "Add Expense"),
         centerTitle: true,
         elevation: 2,
       ),
@@ -158,10 +196,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         );
                       },
                     ),
-                    const DropdownMenuItem<String>(
-                      value: "__add_member__",
-                      child: Text("+ Add Member"),
-                    ),
                   ],
                   onChanged: (val) {
                     if (val == "__add_member__") {
@@ -185,7 +219,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 TextField(
                   controller: _descController,
                   decoration: const InputDecoration(
-                    labelText: "Description",
+                    labelText: "Description (optional)",
                     filled: true,
                     prefixIcon: Icon(Icons.description),
                   ),
@@ -194,10 +228,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _saveExpense,
-                    icon: const Icon(Icons.save),
-                    label: const Text("Save Expense"),
+          child: ElevatedButton.icon(
+            onPressed: _saveExpense,
+            icon: const Icon(Icons.save),
+            label: Text(widget.expense != null ? "Update Expense" : "Save Expense"),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
