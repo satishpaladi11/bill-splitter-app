@@ -7,7 +7,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HistoryScreen', () {
-    testWidgets('shows empty state when no expenses', (WidgetTester tester) async {
+    testWidgets('shows empty state when no expenses', (
+      WidgetTester tester,
+    ) async {
       await Hive.initFlutter();
       var box = await Hive.openBox('groups');
       box.put('test-group', {
@@ -18,9 +20,7 @@ void main() {
         'expenses': [],
       });
       await tester.pumpWidget(
-        MaterialApp(
-          home: HistoryScreen(groupId: 'test-group'),
-        ),
+        MaterialApp(home: HistoryScreen(groupId: 'test-group')),
       );
       expect(find.text('No expenses yet!'), findsOneWidget);
     });

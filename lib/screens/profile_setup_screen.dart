@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'home_screen.dart';
 import '../main.dart'; // import MainScreen
+import '../utils/avatars.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final bool isEditing; // true if opened from Profile to edit
@@ -13,10 +14,8 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   int? _selectedAvatarIndex;
-  final List<String> _avatars = [
-    "😀","😎","🦸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
-    "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
-  ];
+  // Use centralized avatar list
+  // _selectedAvatarIndex refers into `appAvatars`
   final TextEditingController _nameController = TextEditingController();
 
   @override
@@ -34,13 +33,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your name."), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Please enter your name."),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
     if (_selectedAvatarIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select an avatar."), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Please select an avatar."),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -54,9 +59,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     for (var key in groupsBox.keys) {
       final group = groupsBox.get(key);
       if (group != null && group['members'] != null) {
-    final members = (group['members'] as List)
-      .map((m) => Map<String, dynamic>.from(m as Map))
-      .toList();
+        final members = (group['members'] as List)
+            .map((m) => Map<String, dynamic>.from(m as Map))
+            .toList();
         bool updated = false;
         for (var m in members) {
           if (m['isDefaultUser'] == true) {
@@ -66,16 +71,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           }
         }
         if (updated) {
-          groupsBox.put(key, {
-            ...group,
-            'members': members,
-          });
+          groupsBox.put(key, {...group, 'members': members});
         }
       }
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(widget.isEditing ? "Profile updated!" : "Profile saved!"), backgroundColor: Colors.green),
+      SnackBar(
+        content: Text(widget.isEditing ? "Profile updated!" : "Profile saved!"),
+        backgroundColor: Colors.green,
+      ),
     );
 
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -85,9 +90,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => MainScreen(
-              initialScreen: const HomeScreen(),
-            ),
+            builder: (_) => MainScreen(initialScreen: const HomeScreen()),
           ),
         );
       }
@@ -96,7 +99,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isValid = _nameController.text.trim().isNotEmpty && _selectedAvatarIndex != null;
+    final isValid =
+        _nameController.text.trim().isNotEmpty && _selectedAvatarIndex != null;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? "Edit Profile" : "Setup Profile"),
@@ -105,7 +109,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 24.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -129,12 +136,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   Center(
                     child: Column(
                       children: [
-                        const Text("Selected Avatar", style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          "Selected Avatar",
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const SizedBox(height: 8),
                         CircleAvatar(
                           radius: 32,
                           backgroundColor: Colors.indigo,
-                          child: Text(_avatars[_selectedAvatarIndex!], style: const TextStyle(fontSize: 32)),
+                          child: Text(
+                            appAvatars[_selectedAvatarIndex!],
+                            style: const TextStyle(fontSize: 32),
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -148,29 +161,39 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
-                  itemCount: _avatars.length,
+                  itemCount: appAvatars.length,
                   itemBuilder: (context, index) {
                     final selected = _selectedAvatarIndex == index;
                     return Semantics(
-                      label: 'Avatar ${_avatars[index]}',
+                      label: 'Avatar ${appAvatars[index]}',
                       selected: selected,
                       button: true,
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedAvatarIndex = index),
+                        onTap: () =>
+                            setState(() => _selectedAvatarIndex = index),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: selected ? Border.all(color: Colors.indigo, width: 3) : null,
+                            border: selected
+                                ? Border.all(color: Colors.indigo, width: 3)
+                                : null,
                             boxShadow: selected
-                                ? [BoxShadow(color: Colors.indigo.withOpacity(0.2), blurRadius: 8)]
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.indigo.withOpacity(0.2),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
                                 : [],
                           ),
                           child: CircleAvatar(
                             radius: 30,
-                            backgroundColor: selected ? Colors.indigo.shade100 : Colors.grey[200],
+                            backgroundColor: selected
+                                ? Colors.indigo.shade100
+                                : Colors.grey[200],
                             child: Text(
-                              _avatars[index],
+                              appAvatars[index],
                               style: const TextStyle(fontSize: 24),
                             ),
                           ),

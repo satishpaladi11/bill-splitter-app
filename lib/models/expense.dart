@@ -14,18 +14,18 @@ class Expense {
   });
 
   Map<String, dynamic> toJson() => {
-        'description': description,
-        'amount': amount,
-        'paidBy': paidBy,
-        'splitBetween': splitBetween,
-        'date': date.toIso8601String(),
-      };
+    'description': description,
+    'amount': amount,
+    'paidBy': paidBy,
+    'splitBetween': splitBetween,
+    'date': date.toIso8601String(),
+  };
 
   factory Expense.fromJson(Map<String, dynamic> json) => Expense(
-        description: json['description'],
-        amount: json['amount'],
-        paidBy: json['paidBy'],
-        splitBetween: List<String>.from(json['splitBetween']),
-        date: DateTime.parse(json['date']),
-      );
+    description: json['description'],
+    amount: json['amount'],
+    paidBy: json['paidBy'],
+    splitBetween: List<String>.from(json['splitBetween']),
+    date: DateTime.parse(json['date']),
+  );
 }

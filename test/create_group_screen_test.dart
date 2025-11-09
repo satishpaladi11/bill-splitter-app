@@ -10,11 +10,7 @@ void main() {
     testWidgets('renders create group form', (WidgetTester tester) async {
       await Hive.initFlutter();
       await Hive.openBox('groups');
-      await tester.pumpWidget(
-        MaterialApp(
-          home: CreateGroupScreen(),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: CreateGroupScreen()));
       expect(find.text('Create Group'), findsOneWidget);
       expect(find.text('Group Name'), findsOneWidget);
       expect(find.text('Add Member'), findsOneWidget);

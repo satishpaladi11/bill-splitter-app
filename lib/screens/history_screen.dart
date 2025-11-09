@@ -20,9 +20,19 @@ class HistoryScreen extends StatelessWidget {
                 children: const [
                   Icon(Icons.receipt_long, size: 64, color: Colors.grey),
                   SizedBox(height: 12),
-                  Text("No expenses yet!", style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.w500)),
+                  Text(
+                    "No expenses yet!",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   SizedBox(height: 8),
-                  Text("Add your first expense to see history.", style: TextStyle(color: Colors.grey)),
+                  Text(
+                    "Add your first expense to see history.",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             )

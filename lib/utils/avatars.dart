@@ -1,0 +1,23 @@
+// Centralized avatar emoji list to keep indexes consistent across the app
+const List<String> appAvatars = [
+  "😀",
+  "😎",
+  "🦸",
+  "👩‍💻",
+  "🧑‍🎨",
+  "🐱",
+  "🐶",
+  "🐼",
+  "🐸",
+  "🐵",
+  "🦊",
+  "🐯",
+  "🦁",
+  "🐰",
+  "🐨",
+  "🐧",
+  "🐢",
+  "🐬",
+  "🐳",
+  "🦄",
+];

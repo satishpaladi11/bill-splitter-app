@@ -7,11 +7,7 @@ void main() {
 
   group('ReportsScreen', () {
     testWidgets('shows empty state message', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ReportsScreen(),
-        ),
-      );
+      await tester.pumpWidget(MaterialApp(home: ReportsScreen()));
       expect(find.text('Reports will be shown here'), findsOneWidget);
     });
   });

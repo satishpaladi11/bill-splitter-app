@@ -19,12 +19,10 @@ void main() {
         'expenses': [],
       });
       await tester.pumpWidget(
-        MaterialApp(
-          home: AddExpenseScreen(groupId: 'test-group'),
-        ),
+        MaterialApp(home: AddExpenseScreen(groupId: 'test-group')),
       );
       expect(find.text('Add Expense'), findsOneWidget);
-      expect(find.text('Description'), findsOneWidget);
+  expect(find.text("What's this expense for? (optional)"), findsOneWidget);
       expect(find.text('Amount'), findsOneWidget);
     });
   });

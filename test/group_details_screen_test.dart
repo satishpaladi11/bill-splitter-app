@@ -7,7 +7,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GroupDetailsScreen', () {
-    testWidgets('renders group name and empty states', (WidgetTester tester) async {
+    testWidgets('renders group name and empty states', (
+      WidgetTester tester,
+    ) async {
       // Setup Hive mock
       await Hive.initFlutter();
       var box = await Hive.openBox('groups');
@@ -18,9 +20,7 @@ void main() {
         'expenses': [],
       });
       await tester.pumpWidget(
-        MaterialApp(
-          home: GroupDetailsScreen(groupId: 'test-group'),
-        ),
+        MaterialApp(home: GroupDetailsScreen(groupId: 'test-group')),
       );
       expect(find.text('Test Group'), findsOneWidget);
       expect(find.text('No members yet!'), findsOneWidget);

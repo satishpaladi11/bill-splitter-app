@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'profile_setup_screen.dart';
+import '../utils/avatars.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,10 +13,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late String userName;
   late int avatarIndex;
-  final List<String> avatars = [
-    "😀","😎","🧸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
-    "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
-  ];
+  // Use the centralized avatar list
+  // avatarIndex saved in Hive refers into `appAvatars`
 
   void _loadProfile() {
     final profileBox = Hive.box('profile');
@@ -41,7 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               radius: 50,
               backgroundColor: Colors.indigo,
               child: Text(
-                avatars[avatarIndex],
+                appAvatars[avatarIndex],
                 style: const TextStyle(fontSize: 48),
               ),
             ),
@@ -74,13 +73,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            )
+            ),
           ],
         ),
       ),

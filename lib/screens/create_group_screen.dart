@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import 'package:share_plus/share_plus.dart';
+import '../utils/avatars.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -42,14 +43,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   // Internal helper that actually adds a member object to the members list
   void _addMemberInternal(String name, {bool invited = false}) {
     if (name.trim().isEmpty) return;
-    final List<String> avatars = [
-      "😀","😎","🧸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
-      "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
-    ];
     // Pick the first unused avatar index for new member
-    final usedIndices = members.map((m) => m['avatarIndex'] as int?).whereType<int>().toSet();
+    final usedIndices = members
+        .map((m) => m['avatarIndex'] as int?)
+        .whereType<int>()
+        .toSet();
     int avatarIndex = 0;
-    for (int i = 0; i < avatars.length; i++) {
+    for (int i = 0; i < appAvatars.length; i++) {
       if (!usedIndices.contains(i)) {
         avatarIndex = i;
         break;
@@ -74,7 +74,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Add member'),
-          content: Text('Invite "$name" to join this group or add their name locally?'),
+          content: Text(
+            'Invite "$name" to join this group or add their name locally?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -89,8 +91,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               label: const Text('Invite'),
               onPressed: () {
                 // Share invite with pending group id
-                final groupName = _groupNameController.text.trim().isEmpty ? 'Group' : _groupNameController.text.trim();
-                final inviteText = 'Join my group "$groupName" on Simplify Split.\nGroup Code: $_pendingGroupId';
+                final groupName = _groupNameController.text.trim().isEmpty
+                    ? 'Group'
+                    : _groupNameController.text.trim();
+                final inviteText =
+                    'Join my group "$groupName" on Simplify Split.\nGroup Code: $_pendingGroupId';
                 Share.share(inviteText);
                 Navigator.pop(ctx);
                 // Mark as invited locally so user can see pending invite
@@ -107,19 +112,26 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     final name = _groupNameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a group name."), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Please enter a group name."),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
     if (members.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please add at least one member."), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Please add at least one member."),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     final box = Hive.box('groups');
-    final groupId = _pendingGroupId; // use pending id so invites work before create
+    final groupId =
+        _pendingGroupId; // use pending id so invites work before create
 
     await box.put(groupId, {
       'groupId': groupId,
@@ -129,7 +141,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Group created!"), backgroundColor: Colors.green),
+      const SnackBar(
+        content: Text("Group created!"),
+        backgroundColor: Colors.green,
+      ),
     );
 
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -148,7 +163,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 24.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -182,54 +200,55 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 const SizedBox(height: 20),
                 Wrap(
                   spacing: 8,
-                  children: members
-                      .map(
-                        (m) {
-                          final List<String> avatars = [
-                            "😀","😎","🧸","👩‍💻","🧑‍🎨","🐱","🐶","🐼","🐸","🐵",
-                            "🦊","🐯","🦁","🐰","🐨","🐧","🐢","🐬","🐳","🦄",
-                          ];
-                          final avatarIndex = m['avatarIndex'] ?? 0;
-                          final invited = m['invited'] == true;
-                          return Chip(
-                            backgroundColor: invited ? Colors.indigo.shade50 : null,
-                            avatar: CircleAvatar(
-                              radius: 18,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  avatars[avatarIndex],
-                                  style: const TextStyle(fontSize: 22),
-                                  textAlign: TextAlign.center,
+                  children: members.map((m) {
+                    final avatarIndex = m['avatarIndex'] ?? 0;
+                    final invited = m['invited'] == true;
+                    return Chip(
+                      backgroundColor: invited ? Colors.indigo.shade50 : null,
+                      avatar: CircleAvatar(
+                        radius: 18,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            appAvatars[avatarIndex],
+                            style: const TextStyle(fontSize: 22),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(m['name']),
+                          if (invited) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'invited',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.indigo,
                                 ),
                               ),
                             ),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(m['name']),
-                                if (invited) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.indigo.shade100,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text('invited', style: TextStyle(fontSize: 11, color: Colors.indigo)),
-                                  ),
-                                ]
-                              ],
-                            ),
-                            onDeleted: m['isDefaultUser']
-                                ? null // can't delete logged-in user
-                                : () {
-                                    setState(() => members.remove(m));
-                                  },
-                          );
-                        },
-                      )
-                      .toList(),
+                          ],
+                        ],
+                      ),
+                      onDeleted: m['isDefaultUser']
+                          ? null // can't delete logged-in user
+                          : () {
+                              setState(() => members.remove(m));
+                            },
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(

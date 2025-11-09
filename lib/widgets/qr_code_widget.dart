@@ -11,7 +11,8 @@ class QRCodeWidget extends StatelessWidget {
     return SizedBox(
       width: 200,
       height: 200,
-      child: QrImageView(   // <-- Use QrImageView instead of QrImage
+      child: QrImageView(
+        // <-- Use QrImageView instead of QrImage
         data: data,
         version: QrVersions.auto,
         gapless: false,

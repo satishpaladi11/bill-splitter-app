@@ -59,8 +59,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         MaterialPageRoute(builder: (_) => GroupDetailsScreen(groupId: code)),
       );
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Invalid group code")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid group code")));
     }
   }
 
@@ -72,10 +73,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         children: [
           Expanded(
             child: _isScanning
-                ? MobileScanner(
-                    controller: controller,
-                    onDetect: _onDetect,
-                  )
+                ? MobileScanner(controller: controller, onDetect: _onDetect)
                 : Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(

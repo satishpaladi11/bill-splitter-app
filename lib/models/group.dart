@@ -1,4 +1,3 @@
-
 import 'expense.dart';
 
 class Group {
@@ -15,18 +14,18 @@ class Group {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'members': members,
-        'expenses': expenses.map((e) => e.toJson()).toList(),
-      };
+    'id': id,
+    'name': name,
+    'members': members,
+    'expenses': expenses.map((e) => e.toJson()).toList(),
+  };
 
   factory Group.fromJson(Map<String, dynamic> json) => Group(
-        id: json['id'],
-        name: json['name'],
-        members: List<Map<String, dynamic>>.from(json['members']),
-        expenses: (json['expenses'] as List)
-            .map((e) => Expense.fromJson(e))
-            .toList(),
-      );
+    id: json['id'],
+    name: json['name'],
+    members: List<Map<String, dynamic>>.from(json['members']),
+    expenses: (json['expenses'] as List)
+        .map((e) => Expense.fromJson(e))
+        .toList(),
+  );
 }

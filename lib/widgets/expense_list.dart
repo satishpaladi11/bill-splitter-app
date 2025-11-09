@@ -15,7 +15,9 @@ class ExpenseList extends StatelessWidget {
         Expense exp = expenses[index];
         return ListTile(
           title: Text('${exp.description} - ₹${exp.amount.toStringAsFixed(2)}'),
-          subtitle: Text('Paid by ${exp.paidBy}, split between ${exp.splitBetween.join(', ')}'),
+          subtitle: Text(
+            'Paid by ${exp.paidBy}, split between ${exp.splitBetween.join(', ')}',
+          ),
           trailing: Text('${exp.date.hour}:${exp.date.minute}'),
         );
       },

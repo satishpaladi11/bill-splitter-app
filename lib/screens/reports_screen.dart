@@ -13,10 +13,7 @@ class ReportsScreen extends StatelessWidget {
           children: const [
             Icon(Icons.bar_chart, size: 80, color: Colors.indigo),
             SizedBox(height: 20),
-            Text(
-              "Reports will be shown here",
-              style: TextStyle(fontSize: 18),
-            ),
+            Text("Reports will be shown here", style: TextStyle(fontSize: 18)),
           ],
         ),
       ),

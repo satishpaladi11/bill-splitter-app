@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('groups');
-    final appStateBox = Hive.box('appState'); 
+    final appStateBox = Hive.box('appState');
 
     // Mark last visited screen
     appStateBox.put('lastScreen', 'home');
@@ -53,14 +53,19 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.group_off, size: 80, color: Colors.grey),
                       const SizedBox(height: 16),
-                      Text("No groups yet!",
-                          style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        "No groups yet!",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text("Create or join a group to get started.",
-                          style: TextStyle(color: Colors.grey)),
+                      Text(
+                        "Create or join a group to get started.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ],
                   ),
                 );
@@ -81,7 +86,9 @@ class HomeScreen extends StatelessWidget {
                   // Earlier code incorrectly assumed it was a Map which causes a cast error
                   // when Hive returns a JSArray/List. Compute balances from the expense list.
                   final expensesRaw = group['expenses'];
-                  final expensesList = (expensesRaw is List<dynamic>) ? expensesRaw : <dynamic>[];
+                  final expensesList = (expensesRaw is List<dynamic>)
+                      ? expensesRaw
+                      : <dynamic>[];
 
                   // Build member name list (expense records store payer as a name string)
                   final memberNames = members.map((m) {
@@ -90,15 +97,21 @@ class HomeScreen extends StatelessWidget {
                   }).toList();
 
                   // Calculate balances per member from expenses
-                  final Map<String, double> balances = {for (var n in memberNames) n: 0.0};
+                  final Map<String, double> balances = {
+                    for (var n in memberNames) n: 0.0,
+                  };
                   for (final e in expensesList) {
                     if (e is Map) {
                       final amount = (e['amount'] as num?)?.toDouble() ?? 0.0;
                       final payer = (e['payer'] as String?) ?? '';
-                      final perPerson = memberNames.isNotEmpty ? amount / memberNames.length : 0.0;
+                      final perPerson = memberNames.isNotEmpty
+                          ? amount / memberNames.length
+                          : 0.0;
                       for (final m in memberNames) {
                         if (memberNames.contains(payer)) {
-                          balances[m] = (balances[m] ?? 0.0) + ((m == payer) ? amount - perPerson : -perPerson);
+                          balances[m] =
+                              (balances[m] ?? 0.0) +
+                              ((m == payer) ? amount - perPerson : -perPerson);
                         }
                       }
                     }
@@ -116,7 +129,8 @@ class HomeScreen extends StatelessWidget {
                   } else {
                     for (final e in expensesList) {
                       if (e is Map) {
-                        totalExpenses += (e['amount'] as num?)?.toDouble() ?? 0.0;
+                        totalExpenses +=
+                            (e['amount'] as num?)?.toDouble() ?? 0.0;
                       }
                     }
                   }
@@ -126,17 +140,23 @@ class HomeScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => GroupDetailsScreen(groupId: key.toString()),
+                          builder: (_) =>
+                              GroupDetailsScreen(groupId: key.toString()),
                         ),
                       );
                     },
                     child: Card(
                       color: color,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 4,
                       margin: const EdgeInsets.symmetric(vertical: 10),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 18,
+                          horizontal: 16,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
@@ -146,15 +166,18 @@ class HomeScreen extends StatelessWidget {
                                   Text(
                                     group['name'] as String? ?? "Unnamed Group",
                                     style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20),
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     "${members.length} members",
                                     style: const TextStyle(
-                                        color: Colors.white70, fontSize: 14),
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                   const SizedBox(height: 6),
                                 ],
@@ -188,8 +211,11 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
 
-                            const Icon(Icons.arrow_forward_ios,
-                                color: Colors.white70, size: 18),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
                           ],
                         ),
                       ),

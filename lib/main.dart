@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/group_details_screen.dart';
@@ -41,7 +42,8 @@ class MyApp extends StatelessWidget {
     return FutureBuilder<Widget>(
       future: _getInitialScreen(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Simplify Split',
@@ -54,9 +56,7 @@ class MyApp extends StatelessWidget {
         // Loading/splash while determining initial screen
         return const MaterialApp(
           debugShowCheckedModeBanner: false,
-          home: Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          ),
+          home: Scaffold(body: Center(child: CircularProgressIndicator())),
         );
       },
     );
@@ -98,26 +98,58 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // Navigation logic is handled by updating _selectedIndex, which switches the displayed screen.
+  Future<bool> _onWillPop() async {
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = 0);
+      return false;
+    }
+    final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Exit app?'),
+            content: const Text('Are you sure you want to exit the app?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () {
+                  // Close the dialog and then exit the app.
+                  Navigator.of(ctx).pop(true);
+                  SystemNavigator.pop();
+                },
+                child: const Text('Exit'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    return shouldExit;
+  }
 
+  // Navigation logic is handled by updating _selectedIndex, which switches the displayed screen.
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Groups"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          BottomNavigationBarItem(icon: Icon(Icons.feedback), label: "Feedback"),
-        ],
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        body: _screens[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.group), label: "Groups"),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.feedback),
+              label: "Feedback",
+            ),
+          ],
+        ),
       ),
     );
   }
